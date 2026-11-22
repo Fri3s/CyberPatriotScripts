@@ -1,13 +1,13 @@
 #!/bin/bash
 
-### list system accounts (UID < 1000) ###
-echo "=== System accounts (UID < 1000): name, uid, shell ==="
-awk -F: '$3 < 1000 {print $1, $3, $7}' /etc/passwd   # print name/uid/shell for system accounts
+UID_MIN=$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)
+UID_MAX=$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)
 
-### list human accounts (UID >= 1000) ###
-echo ""
-echo "=== Human accounts (UID >= 1000): name, uid, shell ==="
-awk -F: '$3 >= 1000 && $3 != 65534 {print $1, $3, $7}' /etc/passwd   # print name/uid/shell for real users, skip 'nobody'
+#list all users:
+echo -e "\n"
+echo "=== Users accounts: name, uid, shell ==="
+getent passwd | awk -F: -v min="${UID_MIN:-1000}" -v max="${UID_MAX:-60000}" \
+  '$3 >= min && $3 <= max {print $1, $3, $7}'
 
 ### fidnd shell paths that don't exist on disk ###
 echo ""
