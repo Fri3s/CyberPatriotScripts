@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -o pipefail
+
+UID_MIN=$(awk '/^UID_MIN/ {print $2}' /etc/login.defs)
+UID_MAX=$(awk '/^UID_MAX/ {print $2}' /etc/login.defs)
+authorized_users="authorized_users.txt"
+
+read -p "Have you created ${authorized_users}  and put all the authorized users inside (only names, seperated by newline)? (y/n)" created_yn
+if [[ "$created_yn" != "y" ]]; then
+	echo "create the file and then re-run the script"
+	exit
+fi
+
+all_valid=$(mktemp)
+trap 'rm -f "$all_valid"' EXIT #delete temp file when script ends
+
+
+#while IFS= read -r line || [[ -n "$line" ]]; do
+#	echo "$line"
+#done < "$authorized_users"
+
+system_users=$(mktemp)
+cat > "$all_valid" << 'EOF'
+root
+daemon
+bin
+sys
+sync
+games
+man
+lp
+mail
+news
+uucp
+proxy
+www-data
+backup
+list
+irc
+_apt
+nobody
+systemd-network
+tss
+systemd-timesync
+messagebus
+usbmux
+dnsmasq
+avahi
+speech-dispatcher
+fwupd-refresh
+saned
+geoclue
+polkitd
+rtkit
+colord
+gnome-initial-setup
+Debian-gdm
+EOF
+
+cat "$authorized_users" >> "$all_valid"
+LC_ALL=C sort -u -o "$all_valid" "$all_valid"
+
+getent passwd | cut -d: -f1 | LC_ALL=C sort -u > ./current_users.txt
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+	echo "$line"
+done < "$all_valid"
+
+#comm number attribute means what columns to hide
+#columsn are: only in 1, only in 2, in both
+echo "=== on system but NOT authorizedd ==="
+LC_ALL=C comm -13 "$all_valid" ./current_users.txt
+
+echo ""
+echo "=== Authorized but NOT on system ==="
+LC_ALL=C comm -23 "$all_valid" ./current_users.txt
