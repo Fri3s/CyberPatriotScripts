@@ -122,19 +122,21 @@ case "$ssh_yn" in
 EOF
 
 		if sshd -t; then
-		  echo "config ok"
-		  systemctl restart "$SSH_SERVICE"
+		    echo "config ok"
+		    systemctl restart "$SSH_SERVICE"
+		    systemctl enable --now "$SSH_SERVICE"
+		    ufw allow ssh
+		    ufw --force enable
+		    echo -e "command to connect: \n"
+		    echo "ssh ${SUDO_USER:-$(whoami)}@$(hostname -I | awk '{print $1}')"
+		    echo "set network in vmware settings to bridged"
 		else
 		  echo "config bad, restoring backup" >&2
 		  cp "${SSHCONFIG}.bak" "$SSHCONFIG"
 		fi
 
-		systemctl enable --now "$SSH_SERVICE"
-		ufw allow ssh
-		ufw --force enable
-		echo -e "command to connect: \n"
-		echo "ssh ${SUDO_USER:-$(whoami)}@$(hostname -I | awk '{print $1}')"
-		echo "set network in vmware settings to bridged"
+		
+	fi
 	;;
     [Nn]* )
 	echo "not installing and setting up ssh"
@@ -148,7 +150,7 @@ read -p "run apt full-upgrade?" upgradeyn
 case "$upgradeyn" in
     [Yy]* )
         echo "running apt-get full-upgrade"
-	apt-get full-upgrade -y -q
+	apt-get full-upgrade -y -q -o Dpkg::Options::="--force-confold"
 	;;
     [Nn]* )
         echo "not running full upgrade"
